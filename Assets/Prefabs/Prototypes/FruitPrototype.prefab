@@ -9,9 +9,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7917011384071118421}
-  - component: {fileID: 6509915447709395332}
+  - component: {fileID: 8728502619016209251}
+  - component: {fileID: 6581284280739245943}
   - component: {fileID: 5310110797401626679}
   - component: {fileID: 1317136779803876760}
+  - component: {fileID: 4140967789692808876}
   m_Layer: 3
   m_Name: FruitPrototype
   m_TagString: Untagged
@@ -34,7 +36,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6509915447709395332
+--- !u!114 &8728502619016209251
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -43,9 +45,26 @@ MonoBehaviour:
   m_GameObject: {fileID: 4433569072752204606}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8bb9e8585fd810b408ef43bb20e1e47d, type: 3}
+  m_Script: {fileID: 11500000, guid: d7b05d3db660a194d8fc32b2f2508f82, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Fruit
+  m_EditorClassIdentifier: Assembly-CSharp::Carryable
+--- !u!114 &6581284280739245943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4433569072752204606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df75a10e638791b4dbf81ec57e28d193, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Carrot
+  sellValue: 2
+  spoilSellValue: 1
+  spoilTime: 10
+  spoilTimeVariance: 5
+  onSell: {fileID: 0}
 --- !u!212 &5310110797401626679
 SpriteRenderer:
   serializedVersion: 3
@@ -142,3 +161,30 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!50 &4140967789692808876
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4433569072752204606}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0

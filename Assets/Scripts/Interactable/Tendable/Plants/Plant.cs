@@ -14,12 +14,17 @@ public enum PlantState
 [RequireComponent(typeof(PlantAnimator))]
 public class Plant : Tendable
 {
+    public override bool CanInteract => needsWatering || currentState == PlantState.Mature || currentState == PlantState.Spoiled || currentState == PlantState.Withered;
+
     [Header("Plant Settings")]
     [SerializeField] private float timeToSprout = 10f; // Time in seconds to grow from seed to sprout
     [SerializeField] private float timeToMature = 15f; // Time in seconds to mature after sprouting
     [SerializeField] private float timeToSpoil = 20f; // Time in seconds to spoil after maturity
     [SerializeField] private float timeToWither = 5f; // Time in seconds to wither if not watered after sprouting
     [SerializeField] private float timeVariance = 2f; // Variance in time for each growth stage
+
+    [SerializeField] private float waterFrequency = 5f; // Time in seconds before the plant needs watering again
+    [SerializeField] private float waterVariance = 1f; // Variance in time before the plant needs watering again
 
     [SerializeField] private GameObject fruitPrefab; // Prefab for the fruit that appears when the plant is mature
 
@@ -28,11 +33,13 @@ public class Plant : Tendable
     [SerializeField] private float timeToHarvest = 5f; // Time in seconds to harvest the plant
     [SerializeField] private float timeToClean = 5f; // Time in seconds to clean the plant
 
+    [SerializeField] private Vector2 harvestDirection = Vector2.up; // Direction in which the fruit is harvested
+
     [Header("Events")]
     [SerializeField] private TransformEvent onPlantRemoved; // Event raised when the plant is harvested or cleaned up
 
     private PlantState currentState = PlantState.Seed;
-    private float witheringTimer = 0f;
+    private bool needsWatering = true;
 
     private PlantAnimator plantAnimator;
 
@@ -81,19 +88,25 @@ public class Plant : Tendable
     protected virtual void OnSeedInteract()
     {
         // Default behavior for seed interaction
+        needsWatering = false; // The plant has been watered
         StartCoroutine(GrowthCoroutine());
     }
 
     protected virtual void OnSproutInteract()
     {
         // Default behavior for sprout interaction
-        ResetWitherCoroutine();
+        needsWatering = false; // The plant has been watered
+        WaterPlant();
     }
 
     protected virtual void OnMatureInteract() {
         // Default behavior for mature interaction
-        // Harvest plant and create carryable item (not implemented in this example)
-        throw new System.NotImplementedException("Harvesting not implemented yet.");
+        Vector2 harvestDir = harvestDirection.normalized; // Normalize the harvest direction
+        var fruit = Instantiate(fruitPrefab, transform.position + (Vector3)harvestDir, Quaternion.identity); // Spawn fruit
+        if (fruit.TryGetComponent<Rigidbody2D>(out var rb))
+        {
+            rb.AddForce(harvestDir * 5f, ForceMode2D.Impulse); // Apply force to the fruit
+        }
     }
 
     protected virtual void OnSpoiledInteract()
@@ -119,11 +132,10 @@ public class Plant : Tendable
         plantAnimator = GetComponent<PlantAnimator>();
     }
 
-    private void ResetWitherCoroutine()
+    private void WaterPlant()
     {
-        StopCoroutine(WitherCoroutine());
-        witheringTimer = timeToWither + Random.Range(-timeVariance, timeVariance);
-        StartCoroutine(WitherCoroutine());
+        StopCoroutine(WitherCoroutine(0));
+        StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
     }
 
     private void UpdateState(PlantState newState)
@@ -132,18 +144,27 @@ public class Plant : Tendable
         plantAnimator.UpdateSprite(currentState);
     }
 
+    private IEnumerator WaterTimer(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        needsWatering = true;
+        if (timeToWither > 0)
+            StartCoroutine(WitherCoroutine(timeToWither + Random.Range(-timeVariance, timeVariance)));
+    }
+
     private IEnumerator GrowthCoroutine()
     {
         yield return new WaitForSeconds(timeToSprout);
         UpdateState(PlantState.Sprout);
-        StartCoroutine(WitherCoroutine());
+        if (waterFrequency > 0)
+            StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
         yield return new WaitForSeconds(timeToMature);
         UpdateState(PlantState.Mature);
         yield return new WaitForSeconds(timeToSpoil);
         UpdateState(PlantState.Spoiled);
     }
 
-    private IEnumerator WitherCoroutine()
+    private IEnumerator WitherCoroutine(float witheringTimer)
     {
         yield return new WaitForSeconds(witheringTimer);
         // Transition to Withered state

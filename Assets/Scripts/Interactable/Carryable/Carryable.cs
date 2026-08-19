@@ -14,6 +14,8 @@ public class Carryable : MonoBehaviour, IInteractable
 {
     public InteractableType Type => InteractableType.Carryable;
 
+    public bool CanInteract => true;
+
     public virtual void Interact()
     {
         _collider.enabled = !_collider.enabled;

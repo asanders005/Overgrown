@@ -5,6 +5,8 @@ public class SeedPlot : MonoBehaviour, IInteractable
 {
     public InteractableType Type => InteractableType.Talkable;
 
+    public bool CanInteract => !isSeedPlanted;
+
     [SerializeField] private TransformEvent onSeedPlanted;
     [SerializeField] private TransformEvent onSeedRemoved;
 
@@ -22,7 +24,6 @@ public class SeedPlot : MonoBehaviour, IInteractable
         if (!isSeedPlanted)
         {
             onSeedPlanted.RaiseEvent(transform);
-            _collider.enabled = false; // Disable the collider to prevent further interaction
             onSeedRemoved.Subscribe(OnSeedRemoved); // Subscribe to the seed removed event
             isSeedPlanted = true;
         }
@@ -34,7 +35,6 @@ public class SeedPlot : MonoBehaviour, IInteractable
         {
             isSeedPlanted = false;
             onSeedRemoved.Unsubscribe(OnSeedRemoved); // Unsubscribe from the seed removed event
-            _collider.enabled = true; // Re-enable the collider to allow interaction again
         }
     }
 }

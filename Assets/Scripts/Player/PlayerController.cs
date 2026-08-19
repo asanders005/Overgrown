@@ -12,6 +12,10 @@ public class PlayerController : MonoBehaviour
     [Header("Interaction Settings")]
     [SerializeField] private Transform carryTransform;
 
+    [Header("Events")]
+    [SerializeField] private Event onSellEvent;
+    [SerializeField] private IntEvent onCurrencyUpdate;
+
     private PlayerInputActions inputActions;
     private Rigidbody2D rb;
 
@@ -166,7 +170,7 @@ public class PlayerController : MonoBehaviour
             }
 
             float distance = Vector2.SqrMagnitude(transform.position - mb.transform.position);
-            if (distance < closestDistance)
+            if (distance < closestDistance && interactable.CanInteract)
             {
                 closestDistance = distance;
                 closest = interactable;
