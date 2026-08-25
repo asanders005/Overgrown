@@ -1,40 +1,32 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Collider2D))]
 public class SeedPlot : MonoBehaviour, IInteractable
 {
     public InteractableType Type => InteractableType.Talkable;
 
     public bool CanInteract => !isSeedPlanted;
 
-    [SerializeField] private TransformEvent onSeedPlanted;
-    [SerializeField] private TransformEvent onSeedRemoved;
+    [SerializeField] private GameObjectEvent onSeedPlanted;
+    [SerializeField] private GameObjectEvent onSeedRemoved;
 
     private bool isSeedPlanted = false;
-
-    private Collider2D _collider;
-
-    private void Start()
-    {
-        _collider = GetComponent<Collider2D>();
-    }
 
     public void Interact()
     {
         if (!isSeedPlanted)
         {
-            onSeedPlanted.RaiseEvent(transform);
-            onSeedRemoved.Subscribe(OnSeedRemoved); // Subscribe to the seed removed event
             isSeedPlanted = true;
+            onSeedPlanted.RaiseEvent(gameObject);
+            onSeedRemoved.Subscribe(OnSeedRemoved); // Subscribe to the seed removed event
         }
     }
 
-    private void OnSeedRemoved(Transform seedTransform)
+    private void OnSeedRemoved(GameObject seedPlot)
     {
-        if (seedTransform == transform)
+        if (seedPlot == gameObject)
         {
-            isSeedPlanted = false;
             onSeedRemoved.Unsubscribe(OnSeedRemoved); // Unsubscribe from the seed removed event
+            isSeedPlanted = false;
         }
     }
 }

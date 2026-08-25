@@ -57,14 +57,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 4433569072752204606}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: df75a10e638791b4dbf81ec57e28d193, type: 3}
+  m_Script: {fileID: 11500000, guid: 8bb9e8585fd810b408ef43bb20e1e47d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Carrot
+  type: 0
   sellValue: 2
-  spoilSellValue: 1
-  spoilTime: 10
-  spoilTimeVariance: 5
-  onSell: {fileID: 0}
+  spoilSellValue: 0
+  spoilTime: 0
+  spoilTimeVariance: 0
+  onSell: {fileID: 11400000, guid: 4d7207baa5d08c1418586725f3c244a5, type: 2}
 --- !u!212 &5310110797401626679
 SpriteRenderer:
   serializedVersion: 3
@@ -174,9 +175,9 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDamping: 0
+  m_LinearDamping: 5
   m_AngularDamping: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -187,4 +188,4 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4

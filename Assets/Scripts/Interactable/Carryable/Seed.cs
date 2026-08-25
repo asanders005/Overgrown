@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Seed : Carryable
 {
-    [SerializeField] private TransformEvent onSeedPlanted;
+    [SerializeField] private GameObjectEvent onSeedPlanted;
     [SerializeField] private string seedName;
     [SerializeField] private GameObject plantPrefab;
 
@@ -12,18 +12,17 @@ public class Seed : Carryable
         if (isCarried)
         {
             onSeedPlanted.Subscribe(PlantSeed);
-            Debug.Log($"Carrying {seedName}. Waiting for planting...");
         }
         else
         {
             onSeedPlanted.Unsubscribe(PlantSeed);
-            Debug.Log($"Dropped {seedName}. No longer waiting for planting.");
         }
     }
 
-    private void PlantSeed(Transform location)
+    private void PlantSeed(GameObject seedPlot)
     {
-        Instantiate(plantPrefab, location.position, Quaternion.identity);
+        var plant = Instantiate(plantPrefab, seedPlot.transform.position, Quaternion.identity).GetComponent<Plant>();
+        plant.AssignSeedPlot(seedPlot);
         onSeedPlanted.Unsubscribe(PlantSeed);
         Destroy(gameObject);
     }

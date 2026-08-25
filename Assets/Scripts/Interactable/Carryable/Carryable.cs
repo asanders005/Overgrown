@@ -28,7 +28,7 @@ public class Carryable : MonoBehaviour, IInteractable
     private Collider2D _collider;
     private Rigidbody2D _rigidbody;
 
-    void Start()
+    void Awake()
     {
         _collider = GetComponent<Collider2D>();
         _rigidbody = GetComponent<Rigidbody2D>();

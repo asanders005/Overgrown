@@ -3,20 +3,21 @@ using UnityEngine;
 
 public enum FruitType
 {
-    None,
     Carrot,
     Tomato,
+    Potato,
 }
 
-public abstract class Fruit : MonoBehaviour
+public class Fruit : MonoBehaviour
 {
-    public abstract FruitType Type { get; }
+    public FruitType Type { get => type; }
 
+    [SerializeField] private FruitType type;
     [SerializeField] private int sellValue = 1;
     [SerializeField] private int spoilSellValue = 0;
     [SerializeField] private float spoilTime = 10f;
     [SerializeField] private float spoilTimeVariance = 5f;
-    [SerializeField] private FloatEvent onSell;
+    [SerializeField] private IntEvent onSell;
 
     private bool isSpoiled = false;
 
@@ -30,6 +31,7 @@ public abstract class Fruit : MonoBehaviour
     public void Sell()
     {
         onSell.RaiseEvent(isSpoiled ? spoilSellValue : sellValue);
+        Destroy(gameObject);
     }
 
     private IEnumerator SpoilCoroutine(float time)

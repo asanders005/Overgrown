@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum PlantState
 {
@@ -12,6 +13,7 @@ public enum PlantState
 }
 
 [RequireComponent(typeof(PlantAnimator))]
+[RequireComponent(typeof(TimerManager))]
 public class Plant : Tendable
 {
     public override bool CanInteract => needsWatering || currentState == PlantState.Mature || currentState == PlantState.Spoiled || currentState == PlantState.Withered;
@@ -36,12 +38,23 @@ public class Plant : Tendable
     [SerializeField] private Vector2 harvestDirection = Vector2.up; // Direction in which the fruit is harvested
 
     [Header("Events")]
-    [SerializeField] private TransformEvent onPlantRemoved; // Event raised when the plant is harvested or cleaned up
+    [SerializeField] private GameObjectEvent onPlantRemoved; // Event raised when the plant is harvested or cleaned up
+
+    [Header("UI References")]
+    [SerializeField] private Image timer;
+    [SerializeField] private Sprite waterTimerSprite;
+    [SerializeField] private Sprite harvestTimerSprite;
 
     private PlantState currentState = PlantState.Seed;
     private bool needsWatering = true;
 
     private PlantAnimator plantAnimator;
+    private TimerManager timerManager;
+
+    private Coroutine waterCoroutine;
+    private Coroutine witherCoroutine;
+
+    private GameObject seedPlot;
 
     public override float TimeToInteract
     {
@@ -85,6 +98,11 @@ public class Plant : Tendable
         }
     }
 
+    public void AssignSeedPlot(GameObject seedPlot)
+    {
+        this.seedPlot = seedPlot;
+    }
+
     protected virtual void OnSeedInteract()
     {
         // Default behavior for seed interaction
@@ -107,19 +125,26 @@ public class Plant : Tendable
         {
             rb.AddForce(harvestDir * 5f, ForceMode2D.Impulse); // Apply force to the fruit
         }
+        timerManager.StopTimer(); // Stop the spoil timer
+
+        onPlantRemoved.RaiseEvent(seedPlot); // Notify that the plant is being removed
+        StopAllCoroutines();
+        Destroy(gameObject); // Remove the mature plant
     }
 
     protected virtual void OnSpoiledInteract()
     {
         // Default behavior for spoiled interaction
-        onPlantRemoved.RaiseEvent(transform); // Notify that the plant is being removed
+        onPlantRemoved.RaiseEvent(seedPlot); // Notify that the plant is being removed
+        StopAllCoroutines();
         Destroy(gameObject); // Remove the spoiled plant
     }
 
     protected virtual void OnWitheredInteract()
     {
         // Default behavior for withered interaction
-        onPlantRemoved.RaiseEvent(transform); // Notify that the plant is being removed
+        onPlantRemoved.RaiseEvent(seedPlot); // Notify that the plant is being removed
+        StopAllCoroutines();
         Destroy(gameObject); // Remove the withered plant
     }
 
@@ -130,12 +155,14 @@ public class Plant : Tendable
         timeToSpoil += Random.Range(-timeVariance, timeVariance);
 
         plantAnimator = GetComponent<PlantAnimator>();
+        timerManager = GetComponent<TimerManager>();
     }
 
     private void WaterPlant()
     {
-        StopCoroutine(WitherCoroutine(0));
-        StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
+        StopCoroutine(witherCoroutine);
+        timerManager.StopTimer();
+        waterCoroutine = StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
     }
 
     private void UpdateState(PlantState newState)
@@ -144,29 +171,43 @@ public class Plant : Tendable
         plantAnimator.UpdateSprite(currentState);
     }
 
+    private void SetHarvestReady()
+    {
+        if (waterCoroutine != null) StopCoroutine(waterCoroutine);
+        if (witherCoroutine != null) StopCoroutine(witherCoroutine);
+        waterCoroutine = null;
+        timer.sprite = harvestTimerSprite;
+        timerManager.SetTimer(timeToSpoil);
+    }
+
     private IEnumerator WaterTimer(float duration)
     {
         yield return new WaitForSeconds(duration);
         needsWatering = true;
         if (timeToWither > 0)
-            StartCoroutine(WitherCoroutine(timeToWither + Random.Range(-timeVariance, timeVariance)));
+            witherCoroutine = StartCoroutine(WitherCoroutine(timeToWither + Random.Range(-timeVariance, timeVariance)));
+        waterCoroutine = null;
     }
 
-    private IEnumerator GrowthCoroutine()
+    protected virtual IEnumerator GrowthCoroutine()
     {
         yield return new WaitForSeconds(timeToSprout);
         UpdateState(PlantState.Sprout);
         if (waterFrequency > 0)
-            StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
+            waterCoroutine = StartCoroutine(WaterTimer(waterFrequency + Random.Range(-waterVariance, waterVariance)));
         yield return new WaitForSeconds(timeToMature);
         UpdateState(PlantState.Mature);
+        SetHarvestReady();
         yield return new WaitForSeconds(timeToSpoil);
         UpdateState(PlantState.Spoiled);
     }
 
     private IEnumerator WitherCoroutine(float witheringTimer)
     {
+        timerManager.SetTimer(witheringTimer);
         yield return new WaitForSeconds(witheringTimer);
-        // Transition to Withered state
+        UpdateState(PlantState.Withered);
+        StopAllCoroutines();
+        witherCoroutine = null;
     }
 }

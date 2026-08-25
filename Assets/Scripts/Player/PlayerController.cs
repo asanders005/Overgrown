@@ -4,8 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(TimerManager))]
 public class PlayerController : MonoBehaviour
 {
+    public bool isCarryingObject => carriedObj != null;
+
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
 
@@ -14,45 +17,84 @@ public class PlayerController : MonoBehaviour
 
     [Header("Events")]
     [SerializeField] private Event onSellEvent;
-    [SerializeField] private IntEvent onCurrencyUpdate;
+    [SerializeField] private Event onOrderDeposit;
+    [SerializeField] private FruitEvent onOrderUpdate;
+    [SerializeField] private Event onOrderComplete;
 
-    private PlayerInputActions inputActions;
     private Rigidbody2D rb;
+    private TimerManager timerManager;
 
     private List<IInteractable> inRange = new List<IInteractable>();
     private GameObject carriedObj;
+    private bool deliveryStarted = false;
 
     private bool isTending = false;
 
     private Vector2 movementDirection;
     private Vector2 currentSpeed;
 
+    private Coroutine tendingCoroutine;
+
+    public bool SetCarriedObj(IInteractable obj)
+    {
+        if (carriedObj != null) return false;
+        obj.Interact();
+        carriedObj = ((MonoBehaviour)obj).gameObject;
+        carriedObj.transform.SetParent(carryTransform);
+        carriedObj.transform.localPosition = Vector3.zero;
+        return true;
+    }
+
     void Awake()
     {
-        inputActions = new PlayerInputActions();
         rb = GetComponent<Rigidbody2D>();
+        timerManager = GetComponent<TimerManager>();
     }
 
     private void OnEnable()
     {
-        inputActions.Player.Enable();
+        onOrderDeposit.Subscribe(OnFruitDeliver);
+        onOrderComplete.Subscribe(OnDeliverComplete);
+        onSellEvent.Subscribe(OnFruitSell);
     }
 
     private void OnDisable()
     {
-        inputActions.Player.Disable();
+        onOrderDeposit.Unsubscribe(OnFruitDeliver);
+        onOrderComplete.Unsubscribe(OnDeliverComplete);
+        onSellEvent.Unsubscribe(OnFruitSell);
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void OnFruitSell()
     {
+        if (carriedObj == null) return;
 
+        var fruit = carriedObj.GetComponent<Fruit>();
+        if (fruit != null)
+        {
+            fruit.Sell();
+            carriedObj = null;
+        }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void OnFruitDeliver()
     {
+        if (carriedObj == null) return;
 
+        var fruit = carriedObj.GetComponent<Fruit>();
+        if (fruit != null)
+        {
+            onOrderUpdate.RaiseEvent(fruit.Type);
+            deliveryStarted = true;
+        }
+    }
+
+    private void OnDeliverComplete()
+    {
+        if (!deliveryStarted || carriedObj == null) return;
+
+        Destroy(carriedObj);
+        carriedObj = null;
     }
 
     private void FixedUpdate()
@@ -88,18 +130,15 @@ public class PlayerController : MonoBehaviour
                 case InteractableType.Carryable:
                     if (carriedObj == null)
                     {
-                        closest.Interact();
-                        carriedObj = ((MonoBehaviour)closest).gameObject;
-                        carriedObj.transform.SetParent(carryTransform);
-                        carriedObj.transform.localPosition = Vector3.zero;
+                        SetCarriedObj(closest);
                         inRange.Remove(closest);
                     }
                     break;
                 case InteractableType.Tendable:
                     Tendable tendable = closest as Tendable;
-                    Debug.Log($"Tending {closest} for {tendable.TimeToInteract} seconds.");
                     isTending = true;
-                    StartCoroutine(TendCoroutine(tendable.TimeToInteract, closest));
+                    tendingCoroutine = StartCoroutine(TendCoroutine(tendable.TimeToInteract, closest));
+                    timerManager.SetTimer(tendable.TimeToInteract);
                     break;
                 case InteractableType.Talkable:
                     closest.Interact();
@@ -112,8 +151,8 @@ public class PlayerController : MonoBehaviour
     {
         if (isTending)
         {
-            StopCoroutine(TendCoroutine(0, null));
-            Debug.Log("Stopped tending.");
+            timerManager.StopTimer();
+            StopCoroutine(tendingCoroutine);
             isTending = false;
         }
     }

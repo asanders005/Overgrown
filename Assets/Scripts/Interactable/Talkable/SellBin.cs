@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class SellBin : IInteractable
+public class SellBin : MonoBehaviour, IInteractable
 {
     [SerializeField] private Event onSellBegin;
 
