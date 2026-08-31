@@ -6,6 +6,9 @@ public class SeedBin : MonoBehaviour, IInteractable
 
     public bool CanInteract => !playerController.isCarryingObject;
 
+    public FruitType SeedType { get => seedType; }
+
+    [SerializeField] private FruitType seedType;
     [SerializeField] private GameObject seedPrefab;
 
     private PlayerController playerController;

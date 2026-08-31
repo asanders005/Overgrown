@@ -7,5 +7,5 @@ public class ScriptableObjectBase : ScriptableObject
 {
 	// Description field that appears as a multi-line text area in the Inspector
 	// Can be used to document the purpose of the ScriptableObject instance
-	[SerializeField, TextArea] string description;
+	[SerializeField, TextArea] protected string description;
 }

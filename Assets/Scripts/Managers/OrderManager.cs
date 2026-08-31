@@ -44,11 +44,18 @@ public class OrderManager : MonoBehaviour
     [SerializeField] private List<OrderDefinitionData> orderDefinitions;
     [SerializeField] private float orderCompleteAnimDuration = 1.0f;
 
+    [Header("Upgrade Settings")]
+    [SerializeField] private float orderTimeLimitMultiplierIncrement = 0.1f;
+    [SerializeField] private float orderRewardMultiplierIncrement = 0.1f;
+
     [Header("Events")]
     [SerializeField] private FruitEvent onOrderUpdate;
     [SerializeField] private Event onOrderUpdateComplete;
     [SerializeField] private IntEvent onOrderDeliver;
     [SerializeField] private Event onOrderFail;
+
+    [SerializeField] private Event onTimeLimitUpgrade;
+    [SerializeField] private Event onRewardUpgrade;
 
     [Header("UI References")]
     [SerializeField] private GameObject orderUIPrefab;
@@ -60,14 +67,21 @@ public class OrderManager : MonoBehaviour
 
     private float OrderUIHeight => orderUIPrefab.GetComponent<RectTransform>().rect.height;
 
+    private float orderTimeLimitMultiplier = 1.0f;
+    private float orderRewardMultiplier = 1.0f;
+
     private void OnEnable()
     {
         onOrderUpdate.Subscribe(UpdateOrder);
+        onTimeLimitUpgrade.Subscribe(UpgradeOrderTimeLimit);
+        onRewardUpgrade.Subscribe(UpgradeOrderReward);
     }
 
     private void OnDisable()
     {
         onOrderUpdate.Unsubscribe(UpdateOrder);
+        onTimeLimitUpgrade.Unsubscribe(UpgradeOrderTimeLimit);
+        onRewardUpgrade.Unsubscribe(UpgradeOrderReward);
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -89,12 +103,13 @@ public class OrderManager : MonoBehaviour
         }
     }
 
+    #region Order Management
     private void AddOrder(Order order)
     {
         if (orders.Count < maxOrders && orderPool.Count == 0)
         {
             orders.Add(order);
-            UpdateUI();
+            AddOrderUI(orders.Count - 1);
         }
         else
         {
@@ -148,26 +163,13 @@ public class OrderManager : MonoBehaviour
         if (index >= 0)
         {
             orders.RemoveAt(index);
+            RemoveOrderUI(index);
             onOrderFail.RaiseEvent();
             if (orderPool.Count > 0)
             {
-                orders.Add(orderPool.Dequeue());
+                AddOrder(orderPool.Dequeue());
             }
             UpdateUI();
-        }
-    }
-
-    private IEnumerator GenerateOrdersCoroutine()
-    {
-        while (true)
-        {
-            Order newOrder = GenerateOrder();
-            if (newOrder != null)
-            {
-                AddOrder(newOrder);
-            }
-            float waitTime = orderGenerationInterval + Random.Range(-orderGenerationVariance, orderGenerationVariance);
-            yield return new WaitForSeconds(waitTime);
         }
     }
 
@@ -182,6 +184,22 @@ public class OrderManager : MonoBehaviour
 
         UpdateUI();
     }
+    #endregion
+
+    #region Order Generation
+    private IEnumerator GenerateOrdersCoroutine()
+    {
+        while (true)
+        {
+            Order newOrder = GenerateOrder();
+            if (newOrder != null)
+            {
+                AddOrder(newOrder);
+            }
+            float waitTime = orderGenerationInterval + Random.Range(-orderGenerationVariance, orderGenerationVariance);
+            yield return new WaitForSeconds(waitTime);
+        }
+    }
 
     private Order GenerateOrder()
     {
@@ -195,8 +213,8 @@ public class OrderManager : MonoBehaviour
         }
 
         var items = GenerateOrderItems(orderDefinition);
-        float timeLimit = Mathf.Max(5, orderDefinition.TimeLimit + Random.Range(-orderDefinition.TimeLimitVariance, orderDefinition.TimeLimitVariance));
-        int reward = Mathf.RoundToInt(Mathf.Max(1, orderDefinition.Reward + Random.Range(-orderDefinition.RewardVariance, orderDefinition.RewardVariance)));
+        float timeLimit = Mathf.Max(5, orderDefinition.TimeLimit + Random.Range(-orderDefinition.TimeLimitVariance, orderDefinition.TimeLimitVariance)) * orderTimeLimitMultiplier;
+        int reward = Mathf.RoundToInt(Mathf.Max(1, orderDefinition.Reward + Random.Range(-orderDefinition.RewardVariance, orderDefinition.RewardVariance)) * orderRewardMultiplier);
 
         return new Order(items, timeLimit, reward);
     }
@@ -218,31 +236,53 @@ public class OrderManager : MonoBehaviour
         }
         return items;
     }
+    #endregion
+
+    #region Upgrade Management
+    private void UpgradeOrderTimeLimit()
+    {
+        orderTimeLimitMultiplier += orderTimeLimitMultiplierIncrement;
+    }
+
+    private void UpgradeOrderReward()
+    {
+        orderRewardMultiplier += orderRewardMultiplierIncrement;
+    }
+    #endregion
+
+    #region UI Management
+    private void AddOrderUI(int index)
+    {
+        Order order = orders[index];
+        GameObject orderUI = Instantiate(orderUIPrefab, orderUIParent);
+        orderUI.transform.localPosition = new Vector3(0, -index * OrderUIHeight, 0);
+        OrderUIController uiController = orderUI.GetComponent<OrderUIController>();
+        if (uiController != null)
+        {
+            uiController.SetOrder(order);
+            orderUIControllers.Add(uiController);
+        }
+        else
+        {
+            Debug.LogError("OrderUIController component not found on the order UI prefab.");
+        }
+        UpdateUI();
+    }
+
+    private void RemoveOrderUI(int index)
+    {
+        Destroy(orderUIControllers[index].gameObject);
+        orderUIControllers.RemoveAt(index);
+        UpdateUI();
+    }
 
     // TODO: Fix Add/Remove order restarting timer UI on all orders
     private void UpdateUI()
     {
-        // Clear existing UI elements
-        foreach (Transform child in orderUIParent)
-        {
-            Destroy(child.gameObject);
-        }
-        // Create new UI elements for each order
         for (int i = 0; i < orders.Count; i++)
         {
-            Order order = orders[i];
-            GameObject orderUI = Instantiate(orderUIPrefab, orderUIParent);
+            GameObject orderUI = orderUIControllers[i].gameObject;
             orderUI.transform.localPosition = new Vector3(0, -i * OrderUIHeight, 0);
-            OrderUIController uiController = orderUI.GetComponent<OrderUIController>();
-            if (uiController != null)
-            {
-                uiController.SetOrder(order);
-                orderUIControllers.Add(uiController);
-            }
-            else
-            {
-                Debug.LogError("OrderUIController component not found on the order UI prefab.");
-            }
         }
     }
 
@@ -256,4 +296,5 @@ public class OrderManager : MonoBehaviour
         OrderUIController uiController = orderUIControllers[index];
         uiController.UpdateFruitCount(fruitType, count);
     }
+    #endregion
 }

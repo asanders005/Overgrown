@@ -15,11 +15,18 @@ public class PlayerController : MonoBehaviour
     [Header("Interaction Settings")]
     [SerializeField] private Transform carryTransform;
 
+    [Header("Upgrade Settings")]
+    [SerializeField] private float moveSpeedMultiplierIncrement = 0.1f;
+    [SerializeField] private float tendDurationMultiplierDecrement = 0.1f;
+
     [Header("Events")]
     [SerializeField] private Event onSellEvent;
     [SerializeField] private Event onOrderDeposit;
     [SerializeField] private FruitEvent onOrderUpdate;
     [SerializeField] private Event onOrderComplete;
+
+    [SerializeField] private Event onMoveSpeedUpgrade;
+    [SerializeField] private Event onTendDurationUpgrade;
 
     private Rigidbody2D rb;
     private TimerManager timerManager;
@@ -34,6 +41,9 @@ public class PlayerController : MonoBehaviour
     private Vector2 currentSpeed;
 
     private Coroutine tendingCoroutine;
+
+    private float moveSpeedMultiplier = 1f;
+    private float tendDurationMultiplier = 1f;
 
     public bool SetCarriedObj(IInteractable obj)
     {
@@ -64,7 +74,46 @@ public class PlayerController : MonoBehaviour
         onOrderComplete.Unsubscribe(OnDeliverComplete);
         onSellEvent.Unsubscribe(OnFruitSell);
     }
+    private void FixedUpdate()
+    {
+        Vector2 targetSpeed = movementDirection * moveSpeed;
 
+        float acceleration = 10f;
+
+        if (Mathf.Abs(targetSpeed.magnitude) > 0.01f)
+        {
+            currentSpeed = Vector2.Lerp(currentSpeed, targetSpeed, acceleration * Time.fixedDeltaTime);
+        }
+        else
+        {
+            currentSpeed = Vector2.Lerp(currentSpeed, Vector2.zero, acceleration * Time.fixedDeltaTime);
+        }
+
+        rb.linearVelocity = currentSpeed;
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Interactable"))
+        {
+            IInteractable interactable = collision.GetComponent<IInteractable>();
+            if (interactable != null)
+            {
+                inRange.Add(interactable);
+            }
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        IInteractable interactable = collision.GetComponent<IInteractable>();
+        if (interactable != null)
+        {
+            inRange.Remove(interactable);
+        }
+    }
+
+    #region Carried Object Event Handlers
     private void OnFruitSell()
     {
         if (carriedObj == null) return;
@@ -96,25 +145,10 @@ public class PlayerController : MonoBehaviour
         Destroy(carriedObj);
         carriedObj = null;
     }
+    #endregion
 
-    private void FixedUpdate()
-    {
-        Vector2 targetSpeed = movementDirection * moveSpeed;
 
-        float acceleration = 10f;
-
-        if (Mathf.Abs(targetSpeed.magnitude) > 0.01f)
-        {
-            currentSpeed = Vector2.Lerp(currentSpeed, targetSpeed, acceleration * Time.fixedDeltaTime);
-        }
-        else
-        {
-            currentSpeed = Vector2.Lerp(currentSpeed, Vector2.zero, acceleration * Time.fixedDeltaTime);
-        }
-
-        rb.linearVelocity = currentSpeed;
-    }
-
+    #region Input Events
     public void Move(Vector2 input)
     {
         movementDirection = isTending ? Vector2.zero : input.normalized;
@@ -137,8 +171,9 @@ public class PlayerController : MonoBehaviour
                 case InteractableType.Tendable:
                     Tendable tendable = closest as Tendable;
                     isTending = true;
-                    tendingCoroutine = StartCoroutine(TendCoroutine(tendable.TimeToInteract, closest));
-                    timerManager.SetTimer(tendable.TimeToInteract);
+                    float duration = tendable.TimeToInteract * tendDurationMultiplier;
+                    tendingCoroutine = StartCoroutine(TendCoroutine(duration, closest));
+                    timerManager.SetTimer(duration);
                     break;
                 case InteractableType.Talkable:
                     closest.Interact();
@@ -169,27 +204,7 @@ public class PlayerController : MonoBehaviour
             carriedObj = null;
         }
     }
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Interactable"))
-        {
-            IInteractable interactable = collision.GetComponent<IInteractable>();
-            if (interactable != null)
-            {
-                inRange.Add(interactable);
-            }
-        }
-    }
-
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        IInteractable interactable = collision.GetComponent<IInteractable>();
-        if (interactable != null)
-        {
-            inRange.Remove(interactable);
-        }
-    }
+    #endregion
 
     private IInteractable GetClosest()
     {
@@ -224,4 +239,18 @@ public class PlayerController : MonoBehaviour
         interactable.Interact();
         isTending = false;
     }
+
+    #region Upgrade Methods
+    private void OnMoveSpeedUpgrade()
+    {
+        moveSpeedMultiplier += moveSpeedMultiplierIncrement;
+        moveSpeed *= moveSpeedMultiplier;
+    }
+
+    private void OnTendDurationUpgrade()
+    {
+        tendDurationMultiplier -= tendDurationMultiplierDecrement;
+    }
+
+    #endregion
 }
