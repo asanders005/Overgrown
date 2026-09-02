@@ -96,6 +96,7 @@ public class UpgradeManager : MonoBehaviour
                                 icon = null, // Assign appropriate icon based on upgradeType and fruitType
                                 price = 100 // Set a default price or calculate based on upgrade type
                             });
+                            GameStateManager.Instance.UnlockSeed(seedBin.SeedType); // Unlock the seed in the game state
                         }
                         else if (upgrade.Key == UpgradeType.SeedQuality && seedBin.gameObject.activeSelf && seedQualityUpgrades[seedBin.SeedType] < seedQualityUpgradeLimit) // If the seed bin is unlocked and upgradable
                         {

@@ -177,6 +177,7 @@ public class OrderManager : MonoBehaviour
     {
         orderUIControllers[index].CompleteOrder();
         yield return new WaitForSeconds(orderCompleteAnimDuration);
+        RemoveOrderUI(index);
         if (orderPool.Count > 0)
         {
             orders.Add(orderPool.Dequeue());
@@ -222,8 +223,12 @@ public class OrderManager : MonoBehaviour
     private Dictionary<FruitType, int> GenerateOrderItems(OrderDefinitionData orderDefinition)
     {
         Dictionary<FruitType, int> items = new Dictionary<FruitType, int>();
-        List<FruitType> fruitTypes = System.Enum.GetValues(typeof(FruitType)).Cast<FruitType>().ToList();
+        List<FruitType> fruitTypes = GameStateManager.Instance.AvailableSeeds;
         int fruitVarietyCount = Mathf.Max(1, orderDefinition.FruitVarietyCount + Random.Range(-orderDefinition.FruitVarietyVariance, orderDefinition.FruitVarietyVariance + 1));
+        if (fruitVarietyCount > fruitTypes.Count)
+        {
+            fruitVarietyCount = fruitTypes.Count;
+        }
         for (int i = 0; i < fruitVarietyCount; i++)
         {
             FruitType fruitType;
@@ -276,7 +281,6 @@ public class OrderManager : MonoBehaviour
         UpdateUI();
     }
 
-    // TODO: Fix Add/Remove order restarting timer UI on all orders
     private void UpdateUI()
     {
         for (int i = 0; i < orders.Count; i++)
